@@ -11,7 +11,7 @@ app.use(cors())
 app.use(express.json())
 
 app.get('/', (req, res) => {
-    res.send('Doctors Portal Client Site!')
+    res.send('Doctors Portal Client Site Deploy Heroku!')
 })
 
 
