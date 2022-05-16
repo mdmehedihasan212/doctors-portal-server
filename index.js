@@ -19,6 +19,23 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@doctors
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function verifyToken(req, res, next) {
+    const authHeaders = req.headers.authorization;
+    if (!authHeaders) {
+        return res.status(401).send({ message: 'Unauthorize Access' })
+    }
+    const token = authHeaders.split(' ')[1]
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden Access' })
+        }
+        req.decoded = decoded;
+        next()
+    });
+
+
+}
+
 async function run() {
 
     try {
@@ -39,13 +56,13 @@ async function run() {
             const query = { treatment: booking.treatment, date: booking.date, patient: booking.patient }
             const exists = await bookingCollection.findOne(query)
             if (exists) {
-                return res.send({ success: false, booking })
+                return res.send({ success: false, exists })
             }
             const result = await bookingCollection.insertOne(booking);
-            return res.send({ success: true, booking })
+            return res.send({ success: true, result })
         })
 
-        app.get('/booking', async (req, res) => {
+        app.get('/booking', verifyToken, async (req, res) => {
             const patient = req.query.patient;
             const query = { patient: patient }
             const bookings = await bookingCollection.find(query).toArray()
@@ -85,8 +102,7 @@ async function run() {
                 service.slots = available;
             })
 
-            res.send(services)
-
+            res.send(services);
         })
     }
     finally {
