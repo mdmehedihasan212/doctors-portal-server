@@ -62,7 +62,7 @@ async function run() {
 
         app.get('/booking', verifyToken, async (req, res) => {
             const patient = req.query.patient;
-            const decodedEmail = req.decoded.email;
+            const decodedEmail = req.decoded?.email;
             if (patient === decodedEmail) {
                 const query = { patient: patient }
                 const bookings = await bookingCollection.find(query).toArray()
@@ -85,17 +85,31 @@ async function run() {
             res.send({ result, token });
         })
 
-        app.put('/user/admin/:email', async (req, res) => {
+        app.put('/user/admin/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
-            const filter = { email: email };
-            const updateDoc = { $set: { role: 'admin' } };
-            const result = await userCollection.updateOne(filter, updateDoc);
+            const requester = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({ email: requester });
+            if (requesterAccount.role === 'admin') {
+                const filter = { email: email };
+                const updateDoc = { $set: { role: 'admin' } };
+                const result = await userCollection.updateOne(filter, updateDoc);
+                res.send(result);
+            }
+            else {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
+        })
+
+        app.get('/users', verifyToken, async (req, res) => {
+            const result = await userCollection.find().toArray()
             res.send(result);
         })
 
-        app.get('/users', async (req, res) => {
-            const result = await userCollection.find().toArray()
-            res.send(result);
+        app.get('/admin/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const user = await userCollection.findOne({ email: email })
+            const isAdmin = user.role === 'admin';
+            res.send({ admin: isAdmin })
         })
 
         app.get('/available', async (req, res) => {
