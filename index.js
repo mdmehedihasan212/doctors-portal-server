@@ -78,9 +78,16 @@ async function run() {
             res.send(doctors)
         })
 
-        app.get('/doctor', verifyToken, verifyAdmin, async (req, res) => {
+        app.get('/doctors', verifyToken, verifyAdmin, async (req, res) => {
             const doctors = await doctorCollection.find().toArray();
             res.send(doctors)
+        })
+
+        app.delete('/doctors/:email', verifyToken, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email }
+            const doctors = await doctorCollection.deleteOne(filter);
+            res.send(doctors);
         })
 
         app.get('/booking', verifyToken, async (req, res) => {
@@ -94,7 +101,6 @@ async function run() {
             else {
                 return res.status(403).send({ message: 'Forbidden Access' })
             }
-
         })
 
         app.put('/user/:email', async (req, res) => {
