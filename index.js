@@ -78,6 +78,11 @@ async function run() {
             res.send(doctors)
         })
 
+        app.get('/doctor', verifyToken, verifyAdmin, async (req, res) => {
+            const doctors = await doctorCollection.find().toArray();
+            res.send(doctors)
+        })
+
         app.get('/booking', verifyToken, async (req, res) => {
             const patient = req.query.patient;
             const decodedEmail = req.decoded?.email;
