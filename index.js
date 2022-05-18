@@ -1,6 +1,8 @@
 const express = require('express')
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+const nodemailer = require('nodemailer');
+const sgTransport = require('nodemailer-sendgrid-transport');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config()
 const app = express()
@@ -32,6 +34,44 @@ function verifyToken(req, res, next) {
         req.decoded = decoded;
         next()
     });
+}
+
+const options = {
+    auth: {
+        api_key: process.env.EMAIL_SENDER_API
+    }
+}
+
+const emailClient = nodemailer.createTransport(sgTransport(options));
+
+function sendEmailUser(booking) {
+
+    const { treatment, patientName, patient, date, slot } = booking;
+    const email = {
+        from: process.env.EMAIL_SENDER_USER,
+        to: patient,
+        subject: `Your Appointment ${treatment} is on ${date} at ${slot} is confirmed`,
+        text: `Your Appointment ${treatment} is on ${date} at ${slot} is confirmed`,
+        html: `
+        <div>
+        <h1>Hello ${patientName},</h1>
+        <h3>Your Appointment ${treatment} is confirmed</h3>
+        <h3>Our Address</h3>
+        <p>Barishal,Bangladesh</p>
+        </div>
+        `,
+
+    };
+
+    emailClient.sendMail(email, function (err, info) {
+        if (err) {
+            console.log(err);
+        }
+        else {
+            console.log('Message sent:', info);
+        }
+    });
+
 }
 
 async function run() {
@@ -69,6 +109,8 @@ async function run() {
                 return res.send({ success: false, exists })
             }
             const result = await bookingCollection.insertOne(booking);
+            sendEmailUser(booking);
+            console.log('Send Email');
             return res.send({ success: true, result })
         })
 
