@@ -45,7 +45,7 @@ const options = {
 
 const emailClient = nodemailer.createTransport(sgTransport(options));
 
-function sendEmailUser(booking) {
+function sendEmailAppointmentUser(booking) {
 
     const { treatment, patientName, patient, date, slot } = booking;
     const email = {
@@ -62,6 +62,35 @@ function sendEmailUser(booking) {
         </div>
         `,
 
+    };
+
+    emailClient.sendMail(email, function (err, info) {
+        if (err) {
+            console.log(err);
+        }
+        else {
+            console.log('Message sent:', info);
+        }
+    });
+
+}
+
+function sendEmailPaymentUser(booking) {
+
+    const { treatment, patientName, patient, date, slot } = booking;
+    const email = {
+        from: process.env.EMAIL_SENDER_USER,
+        to: patient,
+        subject: `Your Payment ${treatment} is on ${date} at ${slot} is confirmed`,
+        text: `Your Payment ${treatment} is on ${date} at ${slot} is confirmed`,
+        html: `
+        <div>
+        <h1>Hello ${patientName},</h1>
+        <h3>Your Payment ${treatment} is confirmed</h3>
+        <h3>Our Address</h3>
+        <p>Barishal,Bangladesh</p>
+        </div>
+        `,
     };
 
     emailClient.sendMail(email, function (err, info) {
@@ -111,7 +140,7 @@ async function run() {
                 return res.send({ success: false, exists })
             }
             const result = await bookingCollection.insertOne(booking);
-            sendEmailUser(booking);
+            sendEmailAppointmentUser(booking);
             console.log('Send Email');
             return res.send({ success: true, result })
         })
@@ -126,9 +155,9 @@ async function run() {
                     transactionId: payment.transactionId
                 }
             }
-            const updatedBooking = await bookingCollection.updateOne(filter, updateDoc)
             const result = await paymentCollection.insertOne(payment)
-            res.send(updateDoc)
+            const updatedBooking = await bookingCollection.updateOne(filter, updateDoc)
+            res.send(updatedBooking)
         })
 
         app.post("/create-payment-intent", verifyToken, async (req, res) => {
