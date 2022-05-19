@@ -4,10 +4,10 @@ const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer');
 const sgTransport = require('nodemailer-sendgrid-transport');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config()
 const app = express()
 const port = process.env.PORT || 5000;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Middleware
 app.use(cors())
@@ -83,6 +83,7 @@ async function run() {
         const bookingCollection = client.db('doctorsPortal').collection('bookings')
         const userCollection = client.db('doctorsPortal').collection('users')
         const doctorCollection = client.db('doctorsPortal').collection('doctors')
+        const paymentCollection = client.db('doctorsPortal').collection('payments')
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -115,16 +116,28 @@ async function run() {
             return res.send({ success: true, result })
         })
 
-        app.post("/create-payment-intent", verifyToken, async (req, res) => {
-            const service = req.body;
-            const price = service.price;
-            const amount = price * 100;
+        app.patch('/payment/:id', verifyToken, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const updatedBooking = await bookingCollection.updateOne(filter, updateDoc)
+            const result = await paymentCollection.insertOne(payment)
+            res.send(updateDoc)
+        })
 
-            // Create a PaymentIntent with the order amount and currency
+        app.post("/create-payment-intent", verifyToken, async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
-                payment_method_type: ['card'],
+                payment_method_types: ['card']
             });
 
             res.send({ clientSecret: paymentIntent.client_secret });
